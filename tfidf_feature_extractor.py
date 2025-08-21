@@ -21,7 +21,7 @@ class ImprovedTFIDFExtractor:
     - 支持谣言相关关键词加权
     """
     
-    def __init__(self, max_features=10000, min_df=2, max_df=0.95):
+    def __init__(self, max_features=10000, min_df=1, max_df=1.0):
         self.max_features = max_features
         self.min_df = min_df
         self.max_df = max_df

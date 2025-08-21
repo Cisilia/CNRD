@@ -5,11 +5,25 @@
 
 import numpy as np
 import jieba
-from gensim.models import Word2Vec
-from transformers import AutoTokenizer, AutoModel
-import torch
+import os
 import warnings
 warnings.filterwarnings('ignore')
+
+# 可选导入
+try:
+    from gensim.models import Word2Vec
+    GENSIM_AVAILABLE = True
+except ImportError:
+    GENSIM_AVAILABLE = False
+    print("警告: gensim不可用，Word2Vec功能将受限")
+
+try:
+    from transformers import AutoTokenizer, AutoModel
+    import torch
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+    print("警告: transformers不可用，BERT功能将受限")
 
 class WordEmbeddingExtractor:
     """
@@ -49,6 +63,11 @@ class WordEmbeddingExtractor:
     
     def _init_bert_model(self):
         """初始化BERT模型"""
+        if not TRANSFORMERS_AVAILABLE:
+            print("transformers库不可用，切换到平均词向量方法")
+            self.method = 'average'
+            return
+            
         try:
             # 使用中文BERT模型
             model_name = self.model_path or 'bert-base-chinese'
@@ -58,11 +77,16 @@ class WordEmbeddingExtractor:
             print(f"成功加载BERT模型: {model_name}")
         except Exception as e:
             print(f"BERT模型加载失败: {e}")
-            print("将使用随机初始化的嵌入")
-            self.method = 'random'
+            print("将使用平均词向量方法")
+            self.method = 'average'
     
     def _init_word2vec_model(self):
         """初始化Word2Vec模型"""
+        if not GENSIM_AVAILABLE:
+            print("gensim库不可用，切换到平均词向量方法")
+            self.method = 'average'
+            return
+            
         if self.model_path and os.path.exists(self.model_path):
             try:
                 self.model = Word2Vec.load(self.model_path)
@@ -157,9 +181,14 @@ class WordEmbeddingExtractor:
             min_count: 最小词频
             workers: 线程数
         """
+        if not GENSIM_AVAILABLE:
+            print("gensim不可用，无法训练Word2Vec模型，切换到平均词向量")
+            self.method = 'average'
+            return
+            
         # 预处理所有文本
         sentences = [self._preprocess_text(text) for text in texts]
-        sentences = [words.split() for words in sentences if words]
+        sentences = [words for words in sentences if words]
         
         # 训练Word2Vec模型
         self.model = Word2Vec(
