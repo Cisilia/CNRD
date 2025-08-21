@@ -1,0 +1,339 @@
+"""
+简化的数据加载器 - 无外部依赖
+"""
+
+import json
+import os
+import re
+from collections import Counter
+
+class SimpleRumorDataLoader:
+    """简化的谣言数据集加载器"""
+    
+    def __init__(self, data_dir="/workspace"):
+        self.data_dir = data_dir
+        self.rumors_file = os.path.join(data_dir, "rumors_v170613.json")
+        self.ced_dir = os.path.join(data_dir, "CED_Dataset")
+    
+    def clean_text(self, text):
+        """清理文本"""
+        if not text or not isinstance(text, str):
+            return ""
+        
+        # 移除URL
+        text = re.sub(r'http[s]?://\S+', '', text)
+        # 移除@用户名
+        text = re.sub(r'@[^\s]+', '', text)
+        # 移除话题标签
+        text = re.sub(r'#[^#]+#', '', text)
+        # 移除多余的空白字符
+        text = re.sub(r'\s+', ' ', text)
+        
+        return text.strip()
+    
+    def load_basic_rumors(self, max_samples=None):
+        """加载基础谣言数据集"""
+        texts = []
+        labels = []
+        metadata = []
+        
+        print(f"正在加载基础谣言数据集: {self.rumors_file}")
+        
+        try:
+            with open(self.rumors_file, 'r', encoding='utf-8') as f:
+                count = 0
+                for line in f:
+                    if max_samples and count >= max_samples:
+                        break
+                    
+                    try:
+                        data = json.loads(line.strip())
+                        
+                        # 提取文本内容
+                        text = data.get('rumorText', '')
+                        title = data.get('title', '')
+                        
+                        # 合并标题和内容
+                        full_text = f"{title} {text}".strip()
+                        
+                        if full_text and len(full_text) > 10:
+                            # 清理文本
+                            cleaned_text = self.clean_text(full_text)
+                            if len(cleaned_text) > 10:
+                                texts.append(cleaned_text)
+                                labels.append(1)  # 所有数据都是谣言
+                                
+                                # 保存元数据
+                                metadata.append({
+                                    'rumorCode': data.get('rumorCode', ''),
+                                    'publishTime': data.get('publishTime', ''),
+                                    'visitTimes': data.get('visitTimes', 0),
+                                    'result': data.get('result', '')
+                                })
+                                
+                                count += 1
+                    
+                    except json.JSONDecodeError:
+                        continue
+        
+        except FileNotFoundError:
+            print(f"文件不存在: {self.rumors_file}")
+            return [], [], []
+        
+        print(f"成功加载 {len(texts)} 条谣言数据")
+        return texts, labels, metadata
+    
+    def load_ced_dataset(self, max_samples=None):
+        """加载CED数据集"""
+        texts = []
+        labels = []
+        metadata = []
+        
+        # 加载原微博数据
+        original_dir = os.path.join(self.ced_dir, "original-microblog")
+        rumor_repost_dir = os.path.join(self.ced_dir, "rumor-repost")
+        non_rumor_repost_dir = os.path.join(self.ced_dir, "non-rumor-repost")
+        
+        if not os.path.exists(original_dir):
+            print(f"CED数据集目录不存在: {self.ced_dir}")
+            return [], [], []
+        
+        print("正在加载CED数据集...")
+        
+        # 获取谣言和非谣言文件列表
+        rumor_files = set()
+        non_rumor_files = set()
+        
+        if os.path.exists(rumor_repost_dir):
+            rumor_files = {f.split('_')[0] for f in os.listdir(rumor_repost_dir) if f.endswith('.json')}
+        
+        if os.path.exists(non_rumor_repost_dir):
+            non_rumor_files = {f.split('_')[0] for f in os.listdir(non_rumor_repost_dir) if f.endswith('.json')}
+        
+        # 加载原微博文件
+        original_files = [f for f in os.listdir(original_dir) if f.endswith('.json')]
+        
+        rumor_count = 0
+        non_rumor_count = 0
+        
+        for filename in original_files:
+            file_id = filename.split('_')[0]
+            filepath = os.path.join(original_dir, filename)
+            
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                text = data.get('text', '')
+                if not text:
+                    continue
+                
+                # 清理文本
+                cleaned_text = self.clean_text(text)
+                if len(cleaned_text) < 10:
+                    continue
+                
+                # 判断是否为谣言
+                is_rumor = file_id in rumor_files
+                is_non_rumor = file_id in non_rumor_files
+                
+                if is_rumor and (max_samples is None or rumor_count < max_samples):
+                    texts.append(cleaned_text)
+                    labels.append(1)  # 谣言
+                    metadata.append({
+                        'file_id': file_id,
+                        'filename': filename,
+                        'user': data.get('user', ''),
+                        'time': data.get('time', ''),
+                        'type': 'rumor'
+                    })
+                    rumor_count += 1
+                
+                elif is_non_rumor and (max_samples is None or non_rumor_count < max_samples):
+                    texts.append(cleaned_text)
+                    labels.append(0)  # 非谣言
+                    metadata.append({
+                        'file_id': file_id,
+                        'filename': filename,
+                        'user': data.get('user', ''),
+                        'time': data.get('time', ''),
+                        'type': 'non_rumor'
+                    })
+                    non_rumor_count += 1
+            
+            except Exception as e:
+                print(f"加载文件失败 {filename}: {e}")
+                continue
+        
+        print(f"CED数据集加载完成:")
+        print(f"- 谣言样本: {rumor_count}")
+        print(f"- 非谣言样本: {non_rumor_count}")
+        print(f"- 总样本数: {len(texts)}")
+        
+        return texts, labels, metadata
+
+def simple_mean(numbers):
+    """计算平均值"""
+    if not numbers:
+        return 0
+    return sum(numbers) / len(numbers)
+
+def balance_dataset(texts, labels, metadata, method='undersample'):
+    """平衡数据集"""
+    # 统计各类样本数
+    label_counts = Counter(labels)
+    print(f"原始数据分布: {dict(label_counts)}")
+    
+    if len(label_counts) < 2:
+        print("数据集只有一个类别，无需平衡")
+        return texts, labels, metadata
+    
+    min_count = min(label_counts.values())
+    
+    if method == 'undersample':
+        # 下采样到最小类别数量
+        balanced_texts = []
+        balanced_labels = []
+        balanced_metadata = []
+        
+        class_counts = {label: 0 for label in label_counts.keys()}
+        
+        for text, label, meta in zip(texts, labels, metadata):
+            if class_counts[label] < min_count:
+                balanced_texts.append(text)
+                balanced_labels.append(label)
+                balanced_metadata.append(meta)
+                class_counts[label] += 1
+        
+        print(f"下采样后数据分布: {Counter(balanced_labels)}")
+        return balanced_texts, balanced_labels, balanced_metadata
+    
+    else:
+        print("上采样方法暂未实现")
+        return texts, labels, metadata
+
+def split_dataset(texts, labels, metadata, test_size=0.2, random_state=42):
+    """简单的数据集划分"""
+    import random
+    
+    # 设置随机种子
+    random.seed(random_state)
+    
+    # 创建索引列表
+    indices = list(range(len(texts)))
+    random.shuffle(indices)
+    
+    # 计算分割点
+    split_point = int(len(indices) * (1 - test_size))
+    
+    # 分割索引
+    train_indices = indices[:split_point]
+    test_indices = indices[split_point:]
+    
+    # 分割数据
+    train_texts = [texts[i] for i in train_indices]
+    test_texts = [texts[i] for i in test_indices]
+    train_labels = [labels[i] for i in train_indices]
+    test_labels = [labels[i] for i in test_indices]
+    train_metadata = [metadata[i] for i in train_indices]
+    test_metadata = [metadata[i] for i in test_indices]
+    
+    print(f"数据集划分完成:")
+    print(f"- 训练集: {len(train_texts)} 样本")
+    print(f"- 测试集: {len(test_texts)} 样本")
+    print(f"- 训练集谣言比例: {sum(train_labels)/len(train_labels):.3f}")
+    print(f"- 测试集谣言比例: {sum(test_labels)/len(test_labels):.3f}")
+    
+    return train_texts, test_texts, train_labels, test_labels, train_metadata, test_metadata
+
+def load_and_preprocess_data(data_dir="/workspace", max_samples=None, 
+                           balance=True, min_text_length=10):
+    """
+    便捷函数：加载和预处理数据
+    """
+    # 加载数据
+    loader = SimpleRumorDataLoader(data_dir)
+    
+    # 尝试加载CED数据集（包含正负样本）
+    texts, labels, metadata = loader.load_ced_dataset(max_samples)
+    
+    # 如果CED数据集为空，加载基础谣言数据集
+    if not texts:
+        print("CED数据集为空，尝试加载基础谣言数据集...")
+        texts, labels, metadata = loader.load_basic_rumors(max_samples)
+        
+        # 为基础数据集添加一些非谣言样本（模拟）
+        if texts:
+            print("注意：基础数据集只包含谣言，正在添加模拟的非谣言样本...")
+            non_rumor_texts = [
+                "今天天气很好，适合出门运动。",
+                "刚刚吃了一顿美味的晚餐，心情很棒。",
+                "看了一部有趣的电影，推荐给大家。",
+                "工作进展顺利，感谢团队的支持。",
+                "周末计划和朋友聚会，很期待。",
+                "最近读了一本好书，学到很多。",
+                "参加了一个有意义的活动。",
+                "完成了重要的项目，很有成就感。",
+                "和朋友一起爬山，风景很美。",
+                "学习了新技能，希望能应用。"
+            ] * (len(texts) // 10 + 1)  # 确保有足够的非谣言样本
+            
+            # 添加与谣言数量相等的非谣言样本
+            non_rumor_count = min(len(texts), len(non_rumor_texts))
+            texts.extend(non_rumor_texts[:non_rumor_count])
+            labels.extend([0] * non_rumor_count)
+            metadata.extend([{'source': 'simulated', 'type': 'non_rumor'}] * non_rumor_count)
+    
+    # 过滤短文本
+    filtered_texts = []
+    filtered_labels = []
+    filtered_metadata = []
+    
+    for text, label, meta in zip(texts, labels, metadata):
+        if len(text) >= min_text_length:
+            filtered_texts.append(text)
+            filtered_labels.append(label)
+            filtered_metadata.append(meta)
+    
+    texts, labels, metadata = filtered_texts, filtered_labels, filtered_metadata
+    print(f"过滤后保留 {len(texts)} 个样本")
+    
+    # 平衡数据集
+    if balance and len(set(labels)) > 1:
+        texts, labels, metadata = balance_dataset(texts, labels, metadata, method='undersample')
+    
+    # 数据集信息
+    text_lengths = [len(text) for text in texts]
+    data_info = {
+        'total_samples': len(texts),
+        'rumor_samples': sum(labels),
+        'non_rumor_samples': len(labels) - sum(labels),
+        'avg_text_length': simple_mean(text_lengths),
+        'label_distribution': dict(Counter(labels))
+    }
+    
+    print(f"\n数据预处理完成:")
+    print(f"- 总样本数: {data_info['total_samples']}")
+    print(f"- 谣言样本: {data_info['rumor_samples']}")
+    print(f"- 非谣言样本: {data_info['non_rumor_samples']}")
+    print(f"- 平均文本长度: {data_info['avg_text_length']:.1f}")
+    
+    return texts, labels, metadata, data_info
+
+# 使用示例
+if __name__ == "__main__":
+    # 加载和预处理数据
+    texts, labels, metadata, data_info = load_and_preprocess_data(
+        max_samples=100,  # 限制样本数以便快速测试
+        balance=True
+    )
+    
+    # 划分数据集
+    train_texts, test_texts, train_labels, test_labels, train_meta, test_meta = split_dataset(
+        texts, labels, metadata
+    )
+    
+    # 显示一些示例
+    print(f"\n数据示例:")
+    for i in range(min(3, len(texts))):
+        print(f"文本 {i+1} (标签={labels[i]}): {texts[i][:100]}...")
