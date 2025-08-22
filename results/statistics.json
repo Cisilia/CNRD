@@ -1,0 +1,97 @@
+{
+  "total_microblogs": 3387,
+  "rumor_count": 1538,
+  "non_rumor_count": 1849,
+  "forward_count_mean": 149.57395925597874,
+  "forward_count_median": 110,
+  "forward_count_max": 771,
+  "forward_count_min": 0,
+  "forward_count_std": 127.9513232339097,
+  "like_count_mean": 39.62267493356953,
+  "like_count_median": 2,
+  "like_count_max": 4348,
+  "like_count_min": 0,
+  "like_count_std": 169.7076042280687,
+  "reply_count_mean": 226.9185119574845,
+  "reply_count_median": 187,
+  "reply_count_max": 840,
+  "reply_count_min": 0,
+  "reply_count_std": 160.48518755659012,
+  "propagation_depth_mean": 4.924121641570712,
+  "propagation_depth_median": 4,
+  "propagation_depth_max": 58,
+  "propagation_depth_min": 0,
+  "propagation_depth_std": 3.2609259871280996,
+  "cascade_size_mean": 376.49247121346326,
+  "cascade_size_median": 326,
+  "cascade_size_max": 964,
+  "cascade_size_min": 3,
+  "cascade_size_std": 234.1896905314484,
+  "avg_time_from_root_mean": 112.39494274769552,
+  "avg_time_from_root_median": 32.8935005527916,
+  "avg_time_from_root_max": 8869.351750306936,
+  "avg_time_from_root_min": 0.013888888888888888,
+  "avg_time_from_root_std": 390.621418691388,
+  "virality_score_mean": 3.7879050782403305,
+  "virality_score_median": 3.7984,
+  "virality_score_max": 5.4749,
+  "virality_score_min": 1.0061,
+  "virality_score_std": 0.6216867388831819,
+  "propagation_efficiency_mean": 104.69015317143003,
+  "propagation_efficiency_median": 74.0,
+  "propagation_efficiency_max": 949.0,
+  "propagation_efficiency_min": 3.0,
+  "propagation_efficiency_std": 102.56808718816632,
+  "interaction_rate_mean": 1.0,
+  "interaction_rate_median": 1.0,
+  "interaction_rate_max": 1.0,
+  "interaction_rate_min": 1.0,
+  "interaction_rate_std": 0.0,
+  "rumor_vs_non_rumor": {
+    "forward_count": {
+      "rumor_mean": 127.84655396618986,
+      "non_rumor_mean": 167.64683612763656,
+      "difference": -39.8002821614467
+    },
+    "like_count": {
+      "rumor_mean": 10.814694408322497,
+      "non_rumor_mean": 63.585181179015684,
+      "difference": -52.77048677069319
+    },
+    "reply_count": {
+      "rumor_mean": 186.59882964889468,
+      "non_rumor_mean": 260.45646295294756,
+      "difference": -73.85763330405288
+    },
+    "propagation_depth": {
+      "rumor_mean": 5.760728218465539,
+      "non_rumor_mean": 4.22823147647377,
+      "difference": 1.5324967419917694
+    },
+    "cascade_size": {
+      "rumor_mean": 314.44538361508455,
+      "non_rumor_mean": 428.1032990805841,
+      "difference": -113.65791546549957
+    },
+    "avg_time_from_root": {
+      "rumor_mean": 70.561831349634,
+      "non_rumor_mean": 147.1917655331031,
+      "difference": -76.6299341834691
+    },
+    "virality_score": {
+      "rumor_mean": 3.6463186605981797,
+      "non_rumor_mean": 3.905676798269335,
+      "difference": -0.2593581376711551
+    },
+    "propagation_efficiency": {
+      "rumor_mean": 66.39263915562415,
+      "non_rumor_mean": 136.54606261237618,
+      "difference": -70.15342345675202
+    },
+    "interaction_rate": {
+      "rumor_mean": 1.0,
+      "non_rumor_mean": 1.0,
+      "difference": 0.0
+    }
+  }
+}
